@@ -49,7 +49,7 @@ def shCoreInfo(validIPs, username, netDevice):
                 authLog.info(f"Taking a show run for device: {validIPs}")
                 shRunOut = sshAccess.send_command(shRun)
                 authLog.info(f"Successfully ran the command {shRun} on device: {validIPs}")
-                genTxtFile(validIPs, username, filename=f"Show run before refresh for {shHostnameOutDoc}")
+                genTxtFile(validIPs, username, filename=f"Show run before refresh for {shHostnameOutDoc}", shRunOut=shRunOut)
 
                 print(f"INFO: Taking a \"{shIntStat}\" for device: {validIPs}")
                 shIntStatOut = sshAccess.send_command(shIntStat)
@@ -81,8 +81,6 @@ def shCoreInfo(validIPs, username, netDevice):
                     commandOutput. append(vlanID)
                     authLog.info(f"Item: {vlanID}, from the command {shRunVLAN} was appended to the list on device: {validIPs}")
                 
-
-
                 return commandOutput
             
             except Exception as error:
