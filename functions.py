@@ -141,3 +141,12 @@ def genTxtFile(validDeviceIP, username, filename="", *args):
 
             elif isinstance(arg, str):
                 failedDevices.write(arg + "\n")
+
+def addToList(deviceIP, generalList, *args):
+    for item in args:
+        if isinstance(item,list):
+            generalList.extend(item)
+            authLog.info(f"Item: {item} appended to list 'commandOutput' for device: {deviceIP}")
+        else:
+            print(f"ERROR: A list wasn't received.")
+            authLog.info(f"A list wasn't received.")
