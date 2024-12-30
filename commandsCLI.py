@@ -1,6 +1,7 @@
 from netmiko import ConnectHandler
 from log import authLog
 from functions import genTxtFile, addToList
+from strings import hostnameTxt, ipDomainLookTxt, vtpDomainTxt, vlanTxt, hostPortTxt, trunkPortTxt, mgmtVlanTxt, defaultGateTxt, snmpLocationTxt
 
 import traceback
 import ipaddress
@@ -14,6 +15,9 @@ shRunVLAN = "show run | sec vlan|VLAN"
 shIntStat = "show interface status | exc Po"
 shIntBr = "show ip interface brief | exclude un"
 shCDPNeigh = "show cdp neighbor | sec core|CORE|Core"
+shRunDefaultGateway = "show run | inc ip default-gateway"
+shRunDefaultRoute = "show run | inc ip route 0.0.0.0"
+shRunSNMPLocation = "show run | sec snmp-server location"
 
 commandOutput = []
 intConfig = []
@@ -68,7 +72,7 @@ def shCoreInfo(validIPs, username, netDevice):
                 showVlanMGMTOut = sshAccess.send_command(showVlanMGMT)
                 authLog.info(f"Automation successfully ran the command:{showVlanMGMT}\n{shHostnameOut}{showVlanMGMT}\n{showVlanMGMTOut}")
                 showVlanMGMTOut1 = re.findall(mgmtVlanPatt, showVlanMGMTOut)
-                authLog.info(f"Automation successfully found the Mangaement VLAN for device: {validIPs}: {showVlanMGMTOut1}")
+                authLog.info(f"Automation successfully found the Management VLAN for device: {validIPs}: {showVlanMGMTOut1}")
 
                 mgmtVlan = f"{showVlanMGMTOut1[0]}"
                 ipDomainLookupVLAN = "ip domain lookup source-interface " + f"{mgmtVlan}"
@@ -82,9 +86,21 @@ def shCoreInfo(validIPs, username, netDevice):
                 shRunVLANOut = sshAccess.send_command(shRunVLAN)
                 authLog.info(f"Automation successfully ran the command:{shRunVLAN}\n{shHostnameOut}{shRunVLAN}\n{shRunVLANOut}")
                 shRunVLANOut1 = re.findall(vlanPatt, shRunVLANOut)
-                authLog.info(f"Automation successfully found the Mangaement VLAN for device: {validIPs}: {shRunVLANOut1}")
+                authLog.info(f"Automation successfully found the VLANs for device: {validIPs}: {shRunVLANOut1}")
 
-                commandOutput.append(shHostnameOutDoc, ipDomainLookupVLAN, vtpDomain)
+                addToList(validIPs, commandOutput, hostnameTxt)
+                commandOutput.append(shHostnameOutDoc)
+                authLog.info(f"The following strings were appended to list 'commandOutput':\n{shHostnameOutDoc}")
+
+                addToList(validIPs, commandOutput, ipDomainLookTxt)
+                commandOutput.append(ipDomainLookupVLAN)
+                authLog.info(f"The following strings were appended to list 'commandOutput':\n{ipDomainLookupVLAN}")
+
+                addToList(validIPs, commandOutput, vtpDomainTxt)
+                commandOutput.append(vtpDomain)
+                authLog.info(f"The following strings were appended to list 'commandOutput':\n{vtpDomain}")
+
+                addToList(validIPs, commandOutput, vlanTxt)
 
                 for vlanID in shRunVLANOut1:
                     commandOutput. append(vlanID)
@@ -110,7 +126,7 @@ def shCoreInfo(validIPs, username, netDevice):
                 for stackNumber in range(1,shIntStatOut4+1):
                     authLog.info(f"Generating the config for: interface range TwoGigabitEthernet{stackNumber}/0/1 - 36, on device: {validIPs}")
                     intConfigHosts = [
-                        f'interface range TwoGigabitEthernet{stackNumber}/0/1 - 36'
+                        f'interface range TwoGigabitEthernet{stackNumber}/0/1 - 36',
                         'desc VOIP POE PORTS',
                         f'switchport access vlan {dataVLAN}',
                         'switchport mode access',
@@ -131,7 +147,7 @@ def shCoreInfo(validIPs, username, netDevice):
                         'authentication timer reauthenticate server',
                         'authentication timer inactivity server',
                         'authentication violation restrict',
-                        'mab,'
+                        'mab',
                         'snmp trap mac-notification change added',
                         'no snmp trap link-status',
                         'dot1x pae authenticator',
@@ -142,7 +158,7 @@ def shCoreInfo(validIPs, username, netDevice):
                     ]
 
                     intConfigHosts1 = [
-                        f'interface range TenGigabitEthernet{stackNumber}/0/37 - 48'
+                        f'interface range TenGigabitEthernet{stackNumber}/0/37 - 48',
                         'desc VOIP POE PORTS',
                         f'switchport access vlan {dataVLAN}',
                         'switchport mode access',
@@ -163,7 +179,7 @@ def shCoreInfo(validIPs, username, netDevice):
                         'authentication timer reauthenticate server',
                         'authentication timer inactivity server',
                         'authentication violation restrict',
-                        'mab,'
+                        'mab',
                         'snmp trap mac-notification change added',
                         'no snmp trap link-status',
                         'dot1x pae authenticator',
@@ -173,7 +189,7 @@ def shCoreInfo(validIPs, username, netDevice):
                         'ip dhcp snooping limit rate 50'
                     ]
 
-                    addToList(validIPs, commandOutput, intConfigHosts, intConfigHosts1)
+                    addToList(validIPs, commandOutput, hostPortTxt, intConfigHosts, intConfigHosts1)
 
                 print(f"INFO: Taking a \"{shIntBr}\" for device: {validIPs}")
                 shIntBrOut = sshAccess.send_command(shIntBr)
@@ -211,24 +227,24 @@ def shCoreInfo(validIPs, username, netDevice):
                     authLog.info(f"This is part the description for the second interface going to the core: {coreInt2}")
 
                 portChannel = [
-                    f'interface Port-channel{portChannelNumber}'
-                    f'description {site_code}-CORE-01 - PO{portChannelNumber}'
-                    'switchport'
-                    'switchport access vlan 1001'
-                    'switchport trunk native vlan 998'
-                    f'switchport trunk allowed vlan {allowedVlans}'
-                    'switchport mode trunk'
-                    'logging event link-status'
-                    'logging event trunk-status'
-                    'snmp trap link-status'
-                    'spanning-tree portfast disable'
-                    'spanning-tree bpduguard disable'
-                    'ip dhcp snooping trust'
+                    f'interface Port-channel{portChannelNumber}',
+                    f'description {site_code}-CORE-01 - PO{portChannelNumber}',
+                    'switchport',
+                    'switchport access vlan 1001',
+                    'switchport trunk native vlan 998',
+                    f'switchport trunk allowed vlan {allowedVlans}',
+                    'switchport mode trunk',
+                    'logging event link-status',
+                    'logging event trunk-status',
+                    'snmp trap link-status',
+                    'spanning-tree portfast disable',
+                    'spanning-tree bpduguard disable',
+                    'ip dhcp snooping trust',
                     'no shutdown'
                 ]
 
                 trunkInt = [
-                    'interface TenGigabitEthernet3/1/1'
+                    'interface TenGigabitEthernet3/1/1',
                     f'description {site_code}-CORE-01 - {coreInt1}',
                     'switchport access vlan 1001',
                     'switchport trunk native vlan 998',
@@ -261,9 +277,42 @@ def shCoreInfo(validIPs, username, netDevice):
                     'no shutdown'
                 ]
 
-                addToList(validIPs, commandOutput, portChannel, trunkInt)
+                showRunMgmtVlanOut = sshAccess.send_command(f'show run interface vlan {mgmtVlan} | inc ip address')
 
-                return commandOutput
+                mgmtVlanInt = [
+                    'interface Vlan1500',
+                    f'description {site_code}-MGMT',
+                    f'{showRunMgmtVlanOut}',
+                    'no ip redirects',
+                    'no ip proxy-arp',
+                    'no shutdown'
+                ]
+
+                addToList(validIPs, commandOutput, trunkPortTxt, portChannel, trunkInt, mgmtVlanTxt, mgmtVlanInt)
+
+                print(f"INFO: Taking a \"{shRunDefaultGateway}\" for device: {validIPs}")
+                shRunDefaultGatewayOut = sshAccess.send_command(shRunDefaultGateway)
+                authLog.info(f"Automation successfully ran the command:{shRunDefaultGateway}\n{shHostnameOut}{shRunDefaultGateway}\n{shRunDefaultGatewayOut}")
+
+                print(f"INFO: Taking a \"{shRunDefaultRoute}\" for device: {validIPs}")
+                shRunDefaultRouteOut = sshAccess.send_command(shRunDefaultRoute)
+                authLog.info(f"Automation successfully ran the command:{shRunDefaultRoute}\n{shHostnameOut}{shRunDefaultRoute}\n{shRunDefaultRouteOut}")
+
+                addToList(validIPs, commandOutput, defaultGateTxt)
+
+                commandOutput.append(shRunDefaultGatewayOut, shRunDefaultRouteOut)
+                authLog.info(f"The following strings were appended to list 'commandOutput':\n{shRunDefaultGatewayOut}\n{shRunDefaultRouteOut}")
+
+                print(f"INFO: Taking a \"{shRunSNMPLocation}\" for device: {validIPs}")
+                shRunSNMPLocationOut = sshAccess.send_command(shRunSNMPLocation)
+                authLog.info(f"Automation successfully ran the command:{shRunSNMPLocation}\n{shHostnameOut}{shRunSNMPLocation}\n{shRunSNMPLocationOut}")
+
+                addToList(validIPs, commandOutput, snmpLocationTxt)
+
+                commandOutput.append(shRunSNMPLocationOut)
+                authLog.info(f"The following strings were appended to list 'commandOutput':\n{shRunSNMPLocationOut}")
+
+                return commandOutput, site_code
             
             except Exception as error:
                 print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())

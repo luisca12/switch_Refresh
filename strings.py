@@ -38,3 +38,41 @@ def menuStringEnd():
         print('  -------------------------------------------------------------- ')
         print('  >\t\t\t Option 3: Exit\t\t\t       <')
         print('  -------------------------------------------------------------- \n')
+
+hostnameTxt = [
+        '! The configuration below is for the hostname'
+]
+
+ipDomainLookTxt = [
+        '! The configuration below is for the ip domain lookup'
+]
+
+vtpDomainTxt = [
+        '! The configuration below is for the vtp domain'
+]
+
+vlanTxt = [
+        '! The configuration below is for the Layer 2 VLANs'
+]
+
+hostPortTxt = [
+        '! For ISE monitor offices, update the ip access group to ACL-DEFAULT and the',
+        '! dot1x timeout tx-period to 10.'
+]
+
+trunkPortTxt = [
+        '! The configuration below is for trunking the switch to a single core switch',
+        '! Match the port channel number with the last octect in the IDF management IP.'
+]
+
+mgmtVlanTxt = [
+        '! The configuation below is for the Management VLAN 1500'
+]
+
+defaultGateTxt = [
+        '! The configuration below is for the default gateway and route'
+]
+
+snmpLocationTxt = [
+        '! The configuration below is for the SNMP location'
+]
