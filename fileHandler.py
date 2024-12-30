@@ -2,7 +2,7 @@ from log import authLog
 from docx import Document
 from docx.shared import RGBColor, Pt
 from auth import Auth
-from commandsCLI import shCoreInfo, shIntDesSDW
+from commandsCLI import shCoreInfo
 
 import re
 import os
@@ -42,6 +42,7 @@ def docxCore(validIPs, username, netDevice):
 
 def docxIDF(validIPs, username, netDevice):
     commandOutput = []
+    site_code = ""
     commandOutput, site_code = shCoreInfo(validIPs, username, netDevice)
 
     try: 
@@ -50,19 +51,14 @@ def docxIDF(validIPs, username, netDevice):
         authLog.info(f"file successfully found: {wordFile}")
         print(f"INFO: file successfully found: {wordFile}.")
 
-        tittle = wordDOC.add_heading('Below is the configuration added by the script', level=0)
-        tittle.alignment = 1
-        tittleRun = tittle.runs[0]
-        tittleRun.font.size = Pt(24)
-        tittleRun.font.bold = True
-        tittleRun.font.color.rgb = RGBColor(255, 0, 0)
-
         for command in commandOutput:
             docPara = wordDOC.add_paragraph()
             paraRun = docPara.add_run(command)
             paraRun.bold = True
+            authLog.info(f"The string {command} was appended to the file {wordFile} for device {validIPs}")
         
-        wordDOC.save(f'IDF Refresh for {site_code}.docx')
+        validIPsStr = ''.join(validIPs)
+        wordDOC.save(f'Outputs/IDF Refresh for {validIPsStr}.docx')
 
     except Exception as error:
         print(f"ERROR: {error}\n", traceback.format_exc())

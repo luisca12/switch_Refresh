@@ -18,7 +18,8 @@ def checkIsDigit(input_str):
 def validateIP(deviceIP):
     hostnamesResolution = [
         f'{deviceIP}.mgmt.internal.das',
-        f'{deviceIP}.cm.mgmt.internal.das'
+        f'{deviceIP}.cm.mgmt.internal.das',
+        f'{deviceIP}.mgmt.wellpoint.com'
     ]
         
     def checkConnect22(ipAddress, port=22, timeout=3):

@@ -9,8 +9,7 @@ def main():
     greetingString()
     from auth import Auth
     from functions import checkIsDigit
-    from commandsCLI import dot1xThread
-    from fileHandler import docxWorkstationsCore, docxIDF
+    from fileHandler import docxIDF
     from log import authLog
     
     validIPs, username, netDevice = Auth()
