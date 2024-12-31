@@ -1,7 +1,7 @@
 from netmiko import ConnectHandler
 from log import authLog
 from functions import genTxtFile, addToList
-from strings import hostnameTxt, ipDomainLookTxt, vtpDomainTxt, vlanTxt, hostPortTxt, trunkPortTxt, mgmtVlanTxt, defaultGateTxt, snmpLocationTxt
+from strings import hostnameTxt, ipDomainLookTxt, vtpDomainTxt, vlanTxt, hostPortTxt, trunkPortTxt, mgmtVlanTxt, defaultGateTxt, snmpLocationTxt, apIntConfigTxt, faIntConfigTxt
 
 import traceback
 import ipaddress
@@ -18,6 +18,9 @@ shCDPNeigh = "show cdp neighbor | sec core|CORE|Core"
 shRunDefaultGateway = "show run | inc ip default-gateway"
 shRunDefaultRoute = "show run | inc ip route 0.0.0.0"
 shRunSNMPLocation = "show run | sec snmp-server location"
+shIntAP = "show interface status | inc AP|ap"
+shRunInt = "show run int "
+shVlanFa = "show vlan brief | inc Facilities|facilities|FACILITIES"
 
 commandOutput = []
 intConfig = []
@@ -125,7 +128,8 @@ def shCoreInfo(validDeviceIPs, username, netDevice):
                     shIntStatOut4 = int(re.sub(r'\D',"",shIntStatOut3[0]))
                     authLog.info(f"Automation successfully found the total amount of line cards/stack members: {shIntStatOut4} on device: {validIPs}")
 
-                    for stackNumber in range(1,shIntStatOut4+1):
+
+                    for stackNumber in range(1,6):
                         authLog.info(f"Generating the config for: interface range TwoGigabitEthernet{stackNumber}/0/1 - 36, on device: {validIPs}")
                         intConfigHosts = [
                             '',
@@ -160,6 +164,7 @@ def shCoreInfo(validDeviceIPs, username, netDevice):
                             'ip dhcp snooping limit rate 50'
                         ]
 
+                        authLog.info(f"Generating the config for: interface range TenGigabitEthernet{stackNumber}/0/37 - 48, on device: {validIPs}")
                         intConfigHosts1 = [
                             '',
                             f'interface range TenGigabitEthernet{stackNumber}/0/37 - 48',
@@ -293,12 +298,22 @@ def shCoreInfo(validDeviceIPs, username, netDevice):
 
                     mgmtVlanInt = [
                         '',
-                        'interface Vlan1500',
+                        f'interface Vlan{mgmtVlan}',
                         f'description {site_code}-MGMT',
                         f'{showRunMgmtVlanOut}',
                         'no ip redirects',
                         'no ip proxy-arp',
-                        'no shutdown'
+                        'no shutdown',
+                        '',
+                        f'ip telnet source-interface Vlan{mgmtVlan}',
+                        f'ip tftp source-interface Vlan{mgmtVlan}',
+                        f'ip ftp source-interface Vlan{mgmtVlan}',
+                        f'ip ssh source-interface Vlan{mgmtVlan}',
+                        f'ip tacacs source-interface Vlan{mgmtVlan}',
+                        f'ip radius source-interface Vlan{mgmtVlan}',
+                        f'logging source-interface Vlan{mgmtVlan}',
+                        f'snmp-server trap-source Vlan{mgmtVlan}',
+                        f'ntp source Vlan{mgmtVlan}'
                     ]
 
                     addToList(validIPs, commandOutput, trunkPortTxt, portChannel, trunkInt, mgmtVlanTxt, mgmtVlanInt)
@@ -327,6 +342,86 @@ def shCoreInfo(validDeviceIPs, username, netDevice):
 
                     commandOutput.append(shRunSNMPLocationOut)
                     authLog.info(f"The following strings were appended to list 'commandOutput':\n{shRunSNMPLocationOut}")
+
+                    print(f"INFO: Taking a \"{shIntAP}\" for device: {validIPs}")
+                    shIntAPOut = sshAccess.send_command(shIntAP)
+                    authLog.info(f"Automation successfully ran the command:{shIntAP}\n{shHostnameOut}{shIntAP}\n{shIntAPOut}")
+                    shIntAPOut1 = re.findall(intPatt, shIntAPOut)
+                    authLog.info(f"Automation successfully found the Ports for device: {validIPs}: {shIntAPOut1}")
+
+                    for apInt in shIntAPOut1:
+                        print(f"INFO: Taking a \"{shRunInt}{apInt}\" for device: {validIPs}")
+                        apIntOut = sshAccess.send_command(f'{shRunInt}{apInt}')
+                        authLog.info(f"Automation successfully ran the command:{shRunInt}{apInt}\n{shHostnameOut}{shRunInt}{apInt}\n{apIntOut}")
+
+                        newInt = re.sub("Gi", "", apInt)
+                        authLog.info(f"Automation successfully replaced 'Gi' in {apInt}, now it's: {newInt} on device {validIPs}")
+                        newIntBase = newInt.split('/')
+                        newInt0 = newIntBase[0]
+                        newInt1 = newIntBase[1]
+                        authLog.info(f"Automation successfully assigned: {newIntBase} to newInt0: {newInt0}, and newInt1: {newInt1} on device {validIPs}")
+
+                        if newInt0 == "7":
+                            authLog.info(f"Automation successfully found '7' in variable newInt0: {newInt0} on device {validIPs}")
+                            newInt0 = "5"
+                            authLog.info(f"Automation successfully replaced '7' to '5' for variable newInt0 on device: {validIPs}\n interface will be",
+                                         f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
+                        elif newInt0 == "6":
+                            authLog.info(f"Automation successfully found '4' in variable newInt0: {newInt0} on device {validIPs}")
+                            newInt0 = "4"
+                            authLog.info(f"Automation successfully replaced '6' to '4' for variable newInt0 on device: {validIPs}\n interface will be",
+                                         f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
+                            
+                        apIntConfig = [
+                            '',
+                            f'interface range TenGigabitEthernet{newInt0}/0/{newInt1}',
+                            f'{apIntOut}'
+                        ]
+
+                        authLog.info(f"Automation successfully generated config for interface: TenGigabitEthernet{newInt0}/0/{newInt1} on device { validIPs}",
+                                     f"\n {''.join(apIntConfig)}")
+                        
+                        addToList(validIPs, commandOutput, apIntConfigTxt, apIntConfig)
+
+                    print(f"INFO: Taking a \"{shVlanFa}\" for device: {validIPs}")
+                    shVlanFaOut = sshAccess.send_command(shVlanFa)
+                    authLog.info(f"Automation successfully ran the command:{shVlanFa}\n{shHostnameOut}{shVlanFa}\n{shVlanFaOut}")
+                    shVlanFaOut1 = re.findall(intPatt, shVlanFaOut)
+                    authLog.info(f"Automation successfully found the Ports for device: {validIPs}: {shVlanFaOut1}")
+
+                    for faInt in shVlanFaOut1:
+                        print(f"INFO: Taking a \"{shRunInt}{faInt}\" for device: {validIPs}")
+                        faIntOut = sshAccess.send_command(f'{shRunInt}{faInt}')
+                        authLog.info(f"Automation successfully ran the command:{shRunInt}{faInt}\n{shHostnameOut}{shRunInt}{faInt}\n{faIntOut}")
+
+                        newInt = re.sub("Gi", "", faInt)
+                        authLog.info(f"Automation successfully replaced 'Gi' in {faInt}, now it's: {newInt} on device {validIPs}")
+                        newIntBase = newInt.split('/')
+                        newInt0 = newIntBase[0]
+                        newInt1 = newIntBase[1]
+                        authLog.info(f"Automation successfully assigned: {newIntBase} to newInt0: {newInt0}, and newInt1: {newInt1} on device {validIPs}")
+
+                        if newInt0 == "7":
+                            authLog.info(f"Automation successfully found '7' in variable newInt0: {newInt0} on device {validIPs}")
+                            newInt0 = "5"
+                            authLog.info(f"Automation successfully replaced '7' to '5' for variable newInt0 on device: {validIPs}\n interface will be",
+                                         f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
+                        elif newInt0 == "6":
+                            authLog.info(f"Automation successfully found '4' in variable newInt0: {newInt0} on device {validIPs}")
+                            newInt0 = "4"
+                            authLog.info(f"Automation successfully replaced '6' to '4' for variable newInt0 on device: {validIPs}\n interface will be",
+                                         f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
+
+                        faIntConfig = [
+                            '',
+                            f'interface range TenGigabitEthernet{newInt0}/0/{newInt1}',
+                            f'{faIntOut}'
+                        ]
+
+                        authLog.info(f"Automation successfully generated config for interface: TenGigabitEthernet{newInt0}/0/{newInt1} on device { validIPs}",
+                                     f"\n {''.join(faIntConfig)}")
+                        
+                        addToList(validIPs, commandOutput, faIntConfigTxt, faIntConfig)
 
                     return commandOutput, site_code
                 

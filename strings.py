@@ -74,7 +74,8 @@ trunkPortTxt = [
 
 mgmtVlanTxt = [
         '',
-        '! The configuation below is for the Management VLAN 1500'
+        '! The configuation below is for the SVI - Management VLAN and all the',
+        '! configuration using this VLAN'
 ]
 
 defaultGateTxt = [
@@ -85,4 +86,14 @@ defaultGateTxt = [
 snmpLocationTxt = [
         '',
         '! The configuration below is for the SNMP location'
+]
+
+apIntConfigTxt = [
+        '',
+        '! The configuration below is for the APs interfaces'
+]
+
+faIntConfigTxt = [
+        '',
+        '! The configuration below is for the facilities interfaces'
 ]
