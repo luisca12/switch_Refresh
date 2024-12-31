@@ -58,6 +58,7 @@ def Auth():
         while True:
             deviceIPs = input("\nPlease enter the devices IPs separated by commas: ")
             deviceIPsList = deviceIPs.split(',')
+            authLog.info(f"The following IPs/hostnames were entered: {deviceIPsList}")
 
             for ip in deviceIPsList:
                 ip = ip.strip()

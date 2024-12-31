@@ -40,25 +40,25 @@ def docxCore(validIPs, username, netDevice):
         print(f"ERROR: {error}\n", traceback.format_exc())
         authLog.error(f"Wasn't possible to choose the DOCX file, error message: {error}\n{traceback.format_exc()}")
 
-def docxIDF(validIPs, username, netDevice):
-    commandOutput = []
-    site_code = ""
-    commandOutput, site_code = shCoreInfo(validIPs, username, netDevice)
+def docxIDF(validDeviceIPs, username, netDevice):
 
     try: 
-        wordFile = "Template 9300 Layer 2 IDF Config 2.docx"
-        wordDOC = Document(wordFile)
-        authLog.info(f"file successfully found: {wordFile}")
-        print(f"INFO: file successfully found: {wordFile}.")
+        for validIPs in validDeviceIPs:
+            commandOutput = []
+            commandOutput = shCoreInfo(validIPs, username, netDevice)
+            wordFile = "Template 9300 Layer 2 IDF Config.docx"
+            wordDOC = Document(wordFile)
+            authLog.info(f"file successfully found: {wordFile}")
+            print(f"INFO: file successfully found: {wordFile}.")
 
-        for command in commandOutput:
-            docPara = wordDOC.add_paragraph()
-            paraRun = docPara.add_run(command)
-            paraRun.bold = True
-            authLog.info(f"The string {command} was appended to the file {wordFile} for device {validIPs}")
-        
-        validIPsStr = ''.join(validIPs)
-        wordDOC.save(f'Outputs/IDF Refresh for {validIPsStr}.docx')
+            for command in commandOutput:
+                docPara = wordDOC.add_paragraph()
+                paraRun = docPara.add_run(command)
+                paraRun.bold = True
+                authLog.info(f"The string {command} was appended to the file {wordFile} for device {validIPs}")
+            
+            validIPsStr = ''.join(validIPs)
+            wordDOC.save(f'Outputs/IDF Refresh for {validIPsStr}.docx')
 
     except Exception as error:
         print(f"ERROR: {error}\n", traceback.format_exc())
