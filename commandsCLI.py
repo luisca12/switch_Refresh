@@ -20,10 +20,7 @@ shRunDefaultRoute = "show run | inc ip route 0.0.0.0"
 shRunSNMPLocation = "show run | sec snmp-server location"
 shIntAP = "show interface status | inc AP|ap"
 shRunInt = "show run int "
-shVlanFa = "show vlan brief | inc Facilities|facilities|FACILITIES"
-
-commandOutput = []
-intConfig = []
+shVlanFa = "show vlan brief | inc Facilities|facilities|FACILITIES" 
 
 intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
 mgmtVlanPatt = r'[0-9]{4}'
@@ -34,11 +31,13 @@ dataVlanPatt = r'(vlan\s+)(\d+\s+)(name\s+[^\n]+[Dd][Aa][Tt][Aa])'
 ipPatt = r'\d+\.\d+\.\d+\.\d+'
 vlanIDsPatt = r'\d{4}'
 coreIntPatt = r'\d+\/(?:\d+\/)*\d+'
+cutSheetPatt = "([a-zA-Z]+\d+\/(?:\d+\/)*\d+|Po\d*)(\s+.*)(connected|notconnect)\s+(\d{4}|trunk)\s+(auto|a-full)\s+(auto|a-100|a-1000)"
 
 def shCoreInfo(validIPs, username, netDevice):
     authLog.info(f"The following IP/hostname was received: {validIPs}")
     print(f"The following IP/hostname was received: {validIPs}")
-    
+    commandOutput = []
+
     try: 
         while True:
             stackAmount = ""
@@ -83,10 +82,6 @@ def shCoreInfo(validIPs, username, netDevice):
                 shRunOut = sshAccess.send_command(shRun)
                 authLog.info(f"Successfully ran the command {shRun} on device: {validIPs}")
                 genTxtFile(validIPs, username, f"Show run before refresh for {shHostnameOutDoc}", shRunOut)
-                
-                print(f"INFO: Taking a \"{shIntStatConn}\" for device: {validIPs}")
-                shIntStatConnOut = sshAccess.send_command(shIntStatConn)
-                authLog.info(f"Automation successfully ran the command:{shIntStatConn}\n{shHostnameOut}{shIntStatConn}\n{shIntStatConnOut}")
 
                 print(f"INFO: Taking a \"{showVlanMGMT}\" for device: {validIPs}")
                 showVlanMGMTOut = sshAccess.send_command(showVlanMGMT)
@@ -489,6 +484,11 @@ def shCoreInfo(validIPs, username, netDevice):
                     addToList(validIPs, commandOutput, faIntConfigTxt, faIntConfig)
 
                 stackAmount = 0
+
+                print(f"INFO: Taking a \"{shIntStatConn}\" for device: {validIPs}")
+                shIntStatConnOut = sshAccess.send_command(shIntStatConn)
+                authLog.info(f"Automation successfully ran the command:{shIntStatConn}\n{shHostnameOut}{shIntStatConn}\n{shIntStatConnOut}")
+
                 return commandOutput
             
             except Exception as error:

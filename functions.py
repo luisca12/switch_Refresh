@@ -1,9 +1,11 @@
 from log import authLog
 from netmiko.exceptions import NetMikoAuthenticationException, NetMikoTimeoutException
 
+import os
+import csv
 import socket
 import getpass
-import csv
+import openpyxl
 import traceback
 
 def checkIsDigit(input_str):
@@ -154,3 +156,29 @@ def addToList(deviceIP, generalList, *args):
         else:
             print(f"ERROR: A list wasn't received.")
             authLog.info(f"A list wasn't received.")
+
+def cutSheet(validIPs, *args):
+    cutSheetFile = "cutSheet Base.xlsx"
+    outputFolder = "Outputs"
+
+    CutSheetBase = openpyxl.load_workbook(cutSheetFile)
+    CutSheetSheet = CutSheetBase.active
+
+    newCutSheetFile = f'{validIPs} CutSheet'
+    CutSheetSheet['A1'] = f'{validIPs} CutSheet'
+    authLog.info(f"Automation Successfully generated the filename: {newCutSheetFile} for the site Cut Sheet")
+
+    columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+    
+    # Iterate over the arguments (lists) and the columns (A, B, C, D)
+    for i, dataList in enumerate(args):
+        authLog.info(f"Automation is working on the column: {i}")
+        column = columns[i]  # Get the corresponding column (A, B, C, D, etc.)
+        for row, value in enumerate(dataList, start=3):  # Start from row 3
+            authLog.info(f"Automation is working on the row: {row}")
+            cell = f'{column}{row}'  # Create the cell reference (e.g., A3, B3, etc.)
+            CutSheetSheet[cell] = value  # Paste the data in the cell
+            authLog.info(f"Item: {value} appended to XLSX {newCutSheetFile} for device: {validIPs}")
+
+    newCutSheet = os.path.join(outputFolder, newCutSheetFile)
+    CutSheetBase.save(newCutSheet)
