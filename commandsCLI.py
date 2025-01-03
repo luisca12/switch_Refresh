@@ -503,8 +503,8 @@ def shCoreInfo(validIPs, username, netDevice):
                 authLog.info(f"Automation found the following old interfaces description on device {validIPs}:\n{oldIntDesc}")
                 authLog.info(f"Automation found the following VLANs\\trunk of previous mentioned interfaces on device: {validIPs}:{vlanIDList}")
 
-                for i, item in enumerate(vlanID):
-                    if item == "trunk":
+                for item in vlanID:
+                    if item.lower() == "trunk":
                         item1 = "Trunk"
                         oldIntStat.append(item1)
                     else:
