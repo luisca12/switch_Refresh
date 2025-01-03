@@ -9,7 +9,7 @@ import re
 import os
 
 shRun = "show run"
-shIntStatConn = "show interface status | inc connected"
+shIntStatConn = "show interface status | exc notconnect|trunk|ap|AP|Ap|Facilities|facilities|FACILITIES|disabled"
 showVlanMGMT = "show vlan br | inc mgmt|MGMT"
 shRunVLAN = "show run | sec vlan|VLAN"
 shIntStat = "show interface status | exc Po"
@@ -18,11 +18,13 @@ shCDPNeigh = "show cdp neighbor | sec core|CORE|Core"
 shRunDefaultGateway = "show run | inc ip default-gateway"
 shRunDefaultRoute = "show run | inc ip route 0.0.0.0"
 shRunSNMPLocation = "show run | sec snmp-server location"
-shIntAP = "show interface status | inc AP|ap"
+shIntAP = "show interface status | inc AP|ap|Ap"
 shRunInt = "show run int "
-shVlanFa = "show vlan brief | inc Facilities|facilities|FACILITIES" 
+shVlanFa = "show vlan brief | inc Facilities|facilities|FACILITIES"
+shIntTrunk = "show interface status | inc trunk"
 
 intPatt = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+'
+intPattwPO = r'[a-zA-Z]+\d+\/(?:\d+\/)*\d+|Po\d*'
 mgmtVlanPatt = r'[0-9]{4}'
 idfPatt = r'-idf.*'
 vlanPatt = r'vlan\s+\d+\s+name\s+[^\n]+'
@@ -41,6 +43,10 @@ def shCoreInfo(validIPs, username, netDevice):
     oldIntDesc = []
     vlanIDList = []
     oldIntStat = []
+    oldIntList = []
+    newIntList = []
+    oldIntDes1 = []
+    intMapping = {}
 
     try: 
         while True:
@@ -277,7 +283,7 @@ def shCoreInfo(validIPs, username, netDevice):
 
                 trunkInt = [
                     '',
-                    'interface TenGigabitEthernet3/1/1',
+                    'interface TenGigabitEthernet1/1/1',
                     f'description {site_code}-CORE-01 - {coreInt1}',
                     'switchport access vlan 1001',
                     'switchport trunk native vlan 998',
@@ -293,7 +299,7 @@ def shCoreInfo(validIPs, username, netDevice):
                     'ip dhcp snooping trust',
                     'no shutdown',
                     '',
-                    'interface TenGigabitEthernet4/1/2',
+                    'interface TenGigabitEthernet2/1/1',
                     f'description {site_code}-CORE-01 - {coreInt2}',
                     'switchport access vlan 1001',
                     'switchport trunk native vlan 998',
@@ -329,6 +335,26 @@ def shCoreInfo(validIPs, username, netDevice):
                     f'snmp-server trap-source Vlan{mgmtVlan}',
                     f'ntp source Vlan{mgmtVlan}'
                 ]
+
+                print(f"INFO: Taking a \"{shIntTrunk}\" for device: {validIPs}")
+                shIntTrunkOut = sshAccess.send_command(shIntTrunk)
+                authLog.info(f"Automation successfully ran the command:{shIntTrunk}\n{shHostnameOut}{shIntTrunk}\n{shIntTrunkOut}")
+                shIntTrunkOut1 = re.findall(intPattwPO, shIntTrunkOut)
+                authLog.info(f"Automation successfully found the AP Ports for device: {validIPs}:\n{shIntTrunkOut1}")
+
+                intMapping[f'{shIntTrunkOut1[0]}'] = 'TenGigabitEthernet1/1/1'
+                intMapping[f'{shIntTrunkOut1[1]}'] = 'TenGigabitEthernet2/1/1'
+                intMapping[f'{shIntTrunkOut1[2]}'] = f'Port-channel{portChannelNumber}'
+
+                # for intTrunk in shIntTrunkOut1:
+                #     print(f"INFO: Taking a \"show run int {intTrunk} | inc description\" for device: {validIPs}")
+                #     intTrunkOut = sshAccess.send_command(f"show run int {intTrunk} | inc description")
+                #     authLog.info(f"Automation successfully ran the command: show run int {intTrunk} | inc description\n" \
+                #                  f"{shHostnameOut}show run int {intTrunk} | inc description\n{intTrunkOut}")
+                #     intTrunkOut1 = re.sub('description ', '', intTrunkOut)
+                #     authLog.info(f"Automation successfully replaced 'description ', new item: {intTrunkOut1}, on device: {validIPs}")
+                #     oldIntDes1.append(intTrunkOut1)
+                #     authLog.info(f"Automation successfully appended {intTrunkOut1} to old interface description on device: {validIPs}")
 
                 addToList(validIPs, commandOutput, trunkPortTxt, portChannel, trunkInt, mgmtVlanTxt, mgmtVlanInt)
 
@@ -368,50 +394,61 @@ def shCoreInfo(validIPs, username, netDevice):
                     apIntOut = sshAccess.send_command(f'{shRunInt}{apInt} | exc configuration|interface')
                     authLog.info(f"Automation successfully ran the command:{shRunInt}{apInt}\n{shHostnameOut}{shRunInt}{apInt}\n{apIntOut}")
 
-                    newInt = re.sub("Gi", "", apInt)
-                    authLog.info(f"Automation successfully replaced 'Gi' in {apInt}, now it's: {newInt} on device {validIPs}")
-                    newIntBase = newInt.split('/')
-                    newInt0 = newIntBase[0]
-                    newInt1 = newIntBase[1]
-                    authLog.info(f"Automation successfully assigned: {newIntBase} to newInt0: {newInt0}, and newInt1: {newInt1} on device {validIPs}")
+                    apNewInt = re.sub("Gi", "", apInt)
+                    authLog.info(f"Automation successfully replaced 'Gi' in {apInt}, now it's: {apNewInt} on device {validIPs}")
+                    apNewIntBase = apNewInt.split('/')
+                    apNewInt0 = apNewIntBase[0] 
+                    apNewInt1 = apNewIntBase[1]
+                    authLog.info(f"Automation successfully assigned: {apNewIntBase} to apNewInt0: {apNewInt0}, and apNewInt1: {apNewInt1} on device {validIPs}")
 
                     if stackAmount == 5:
-                        if newInt0 == "7":
-                            authLog.info(f"Automation successfully found '7' in variable newInt0: {newInt0} on device {validIPs}")
-                            newInt0 = "5"
-                            authLog.info(f"Automation successfully replaced '7' to '5' for variable newInt0 on device: {validIPs}\n interface will be" \
-                                            f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
-                        elif newInt0 == "6":
-                            authLog.info(f"Automation successfully found '4' in variable newInt0: {newInt0} on device {validIPs}")
-                            newInt0 = "4"
-                            authLog.info(f"Automation successfully replaced '6' to '4' for variable newInt0 on device: {validIPs}\n interface will be" \
-                                            f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
+                        if apNewInt0 == "7":
+                            authLog.info(f"Automation successfully found '7' in variable apNewInt0: {apNewInt0} on device {validIPs}")
+                            apNewInt0 = "5"
+                            authLog.info(f"Automation successfully replaced '7' to '5' for variable apNewInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{apNewInt0}/0/{apNewInt1}")
+                        elif apNewInt0 == "6":
+                            authLog.info(f"Automation successfully found '6' in variable apNewInt0: {apNewInt0} on device {validIPs}")
+                            apNewInt0 = "4"
+                            authLog.info(f"Automation successfully replaced '6' to '4' for variable apNewInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{apNewInt0}/0/{apNewInt1}")
                     elif stackAmount == 4:
-                        if newInt0 == "7":
-                            authLog.info(f"Automation successfully found '7' in variable newInt0: {newInt0} on device {validIPs}")
-                            newInt0 = "4"
-                            authLog.info(f"Automation successfully replaced '7' to '5' for variable newInt0 on device: {validIPs}\n interface will be" \
-                                            f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
-                        elif newInt0 == "6":
-                            authLog.info(f"Automation successfully found '4' in variable newInt0: {newInt0} on device {validIPs}")
-                            newInt0 = "3"
-                            authLog.info(f"Automation successfully replaced '6' to '4' for variable newInt0 on device: {validIPs}\n interface will be" \
-                                            f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
+                        if apNewInt0 == "7":
+                            authLog.info(f"Automation successfully found '7' in variable apNewInt0: {apNewInt0} on device {validIPs}")
+                            apNewInt0 = "4"
+                            authLog.info(f"Automation successfully replaced '7' to '4' for variable apNewInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{apNewInt0}/0/{apNewInt1}")
+                        elif apNewInt0 == "6":
+                            authLog.info(f"Automation successfully found '6' in variable apNewInt0: {apNewInt0} on device {validIPs}")
+                            apNewInt0 = "3"
+                            authLog.info(f"Automation successfully replaced '6' to '3' for variable apNewInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{apNewInt0}/0/{apNewInt1}")
+                    elif stackAmount == 3:
+                        if apNewInt0 == "7":
+                            authLog.info(f"Automation successfully found '7' in variable apNewInt0: {apNewInt0} on device {validIPs}")
+                            apNewInt0 = "3"
+                            authLog.info(f"Automation successfully replaced '7' to '3' for variable apNewInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{apNewInt0}/0/{apNewInt1}")
+                        elif apNewInt0 == "6":
+                            authLog.info(f"Automation successfully found '6' in variable apNewInt0: {apNewInt0} on device {validIPs}")
+                            apNewInt0 = "2"
+                            authLog.info(f"Automation successfully replaced '6' to '2' for variable apNewInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{apNewInt0}/0/{apNewInt1}")   
                     else:
-                        if newInt0 == "7":
-                            authLog.info(f"Automation successfully found '7' in variable newInt0: {newInt0} on device {validIPs}")
-                            newInt0 = "3"
-                            authLog.info(f"Automation successfully replaced '7' to '5' for variable newInt0 on device: {validIPs}\n interface will be" \
-                                            f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
-                        elif newInt0 == "6":
-                            authLog.info(f"Automation successfully found '4' in variable newInt0: {newInt0} on device {validIPs}")
-                            newInt0 = "2"
-                            authLog.info(f"Automation successfully replaced '6' to '4' for variable newInt0 on device: {validIPs}\n interface will be" \
-                                            f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
-                            
+                        if apNewInt0 == "7":
+                            authLog.info(f"Automation successfully found '7' in variable apNewInt0: {apNewInt0} on device {validIPs}")
+                            apNewInt0 = "2"
+                            authLog.info(f"Automation successfully replaced '7' to '2' for variable apNewInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{apNewInt0}/0/{apNewInt1}")
+                        elif apNewInt0 == "6":
+                            authLog.info(f"Automation successfully found '6' in variable apNewInt0: {apNewInt0} on device {validIPs}")
+                            apNewInt0 = "1"
+                            authLog.info(f"Automation successfully replaced '6' to '1' for variable apNewInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{apNewInt0}/0/{apNewInt1}")
+
                     apIntConfig = [
                         '',
-                        f'interface TenGigabitEthernet{newInt0}/0/{newInt1}',
+                        f'interface TenGigabitEthernet{apNewInt0}/0/{apNewInt1}',
                         f'{apIntOut}'
                     ]
 
@@ -419,6 +456,8 @@ def shCoreInfo(validIPs, username, netDevice):
 
                     authLog.info(f"Automation successfully generated config for interface: TenGigabitEthernet{newInt0}/0/{newInt1} on device {validIPs}" \
                                     f"\n {apIntConfigTxt1}")
+                    
+                    intMapping[apInt] = f'TenGigabitEthernet{apNewInt0}/0/{apNewInt1}'
                     
                     addToList(validIPs, commandOutput, apIntConfigTxt, apIntConfig)
 
@@ -447,7 +486,7 @@ def shCoreInfo(validIPs, username, netDevice):
                             authLog.info(f"Automation successfully replaced '7' to '5' for variable newInt0 on device: {validIPs}\n interface will be" \
                                             f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
                         elif newInt0 == "6":
-                            authLog.info(f"Automation successfully found '4' in variable newInt0: {newInt0} on device {validIPs}")
+                            authLog.info(f"Automation successfully found '6' in variable newInt0: {newInt0} on device {validIPs}")
                             newInt0 = "4"
                             authLog.info(f"Automation successfully replaced '6' to '4' for variable newInt0 on device: {validIPs}\n interface will be" \
                                             f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
@@ -455,23 +494,34 @@ def shCoreInfo(validIPs, username, netDevice):
                         if newInt0 == "7":
                             authLog.info(f"Automation successfully found '7' in variable newInt0: {newInt0} on device {validIPs}")
                             newInt0 = "4"
-                            authLog.info(f"Automation successfully replaced '7' to '5' for variable newInt0 on device: {validIPs}\n interface will be" \
+                            authLog.info(f"Automation successfully replaced '7' to '4' for variable newInt0 on device: {validIPs}\n interface will be" \
                                             f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
                         elif newInt0 == "6":
-                            authLog.info(f"Automation successfully found '4' in variable newInt0: {newInt0} on device {validIPs}")
+                            authLog.info(f"Automation successfully found '6' in variable newInt0: {newInt0} on device {validIPs}")
                             newInt0 = "3"
-                            authLog.info(f"Automation successfully replaced '6' to '4' for variable newInt0 on device: {validIPs}\n interface will be" \
+                            authLog.info(f"Automation successfully replaced '6' to '3' for variable newInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
+                    elif stackAmount == 3:
+                        if newInt0 == "7":
+                            authLog.info(f"Automation successfully found '7' in variable newInt0: {newInt0} on device {validIPs}")
+                            newInt0 = "3"
+                            authLog.info(f"Automation successfully replaced '7' to '3' for variable newInt0 on device: {validIPs}\n interface will be" \
+                                            f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
+                        elif newInt0 == "6":
+                            authLog.info(f"Automation successfully found '6' in variable newInt0: {newInt0} on device {validIPs}")
+                            newInt0 = "2"
+                            authLog.info(f"Automation successfully replaced '6' to '2' for variable newInt0 on device: {validIPs}\n interface will be" \
                                             f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
                     else:
                         if newInt0 == "7":
                             authLog.info(f"Automation successfully found '7' in variable newInt0: {newInt0} on device {validIPs}")
-                            newInt0 = "3"
-                            authLog.info(f"Automation successfully replaced '7' to '5' for variable newInt0 on device: {validIPs}\n interface will be" \
+                            newInt0 = "2"
+                            authLog.info(f"Automation successfully replaced '7' to '2' for variable newInt0 on device: {validIPs}\n interface will be" \
                                             f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
                         elif newInt0 == "6":
-                            authLog.info(f"Automation successfully found '4' in variable newInt0: {newInt0} on device {validIPs}")
-                            newInt0 = "2"
-                            authLog.info(f"Automation successfully replaced '6' to '4' for variable newInt0 on device: {validIPs}\n interface will be" \
+                            authLog.info(f"Automation successfully found '6' in variable newInt0: {newInt0} on device {validIPs}")
+                            newInt0 = "1"
+                            authLog.info(f"Automation successfully replaced '6' to '1' for variable newInt0 on device: {validIPs}\n interface will be" \
                                             f"\ninterface range TenGigabitEthernet{newInt0}/0/{newInt1}")
 
                     faIntConfig = [
@@ -484,6 +534,8 @@ def shCoreInfo(validIPs, username, netDevice):
 
                     authLog.info(f"Automation successfully generated config for interface: TenGigabitEthernet{newInt0}/0/{newInt1} on device {validIPs}" \
                                     f"\n {faIntConfigTxt1}")
+                    
+                    intMapping[faInt] = f'TenGigabitEthernet{newInt0}/0/{newInt1}'
                     
                     addToList(validIPs, commandOutput, faIntConfigTxt, faIntConfig)
 
@@ -512,6 +564,20 @@ def shCoreInfo(validIPs, username, netDevice):
                         oldIntStat.append(item1)
 
                 authLog.info(f"Automation found the following interfaces settings of previous mentioned interfaces on deivce: {validIPs}")
+
+                for item, item1 in intMapping.items():
+                    oldIntList.append(item)
+                    newIntList.append(item1)
+
+                for item in oldIntList:
+                    print(f"INFO: Taking a \"show run int {item} | inc description\" for device: {validIPs}")
+                    itemOut = sshAccess.send_command(f"show run int {item} | inc description")
+                    authLog.info(f"Automation successfully ran the command: show run int {item} | inc description\n" \
+                                 f"{shHostnameOut}show run int {item} | inc description\n{itemOut}")
+                    itemOut1 = re.sub('description ', '', itemOut)
+                    authLog.info(f"Automation successfully replaced 'description ', new item: {itemOut1}, on device: {validIPs}")
+                    oldIntDes1.append(itemOut1)
+                    authLog.info(f"Automation successfully appended {itemOut1} to old interface description on device: {validIPs}")
 
                 return commandOutput, oldInt, oldIntDesc, vlanIDList, oldIntStat
             
