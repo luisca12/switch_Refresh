@@ -73,6 +73,7 @@ def cutSheet(validIPs, *args):
 
     CutSheetBase = openpyxl.load_workbook(cutSheetFile)
     authLog.info(f"Automation successfully found the XLSX: {cutSheetFile}")
+    print(f"INFO: Successfully found the XLSX: {cutSheetFile}")
     CutSheetSheet = CutSheetBase.active
 
     newCutSheetFile = f'{validIPs} CutSheet.xlsx'
@@ -91,8 +92,11 @@ def cutSheet(validIPs, *args):
             cell = f'{column}{row}'  # Create the cell reference (e.g., A3, B3, etc.)
             CutSheetSheet[cell] = value  # Paste the data in the cell
             authLog.info(f"The new value on cell: {cell} is: {value}")
+            print(f"INFO: The new value on cell: {cell} is: {value}")
 
     newCutSheet = os.path.join(outputFolder, newCutSheetFile)
     authLog.info(f"New cut sheet is: {newCutSheet}")
     CutSheetBase.save(newCutSheet)
     authLog.info(f"Cut sheet was successfully saved")
+    print(f"INFO: New cut sheet is: {newCutSheet}")
+    print(f"INFO: Cut sheet was successfully saved")

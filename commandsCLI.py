@@ -31,7 +31,7 @@ dataVlanPatt = r'(vlan\s+)(\d+\s+)(name\s+[^\n]+[Dd][Aa][Tt][Aa])'
 ipPatt = r'\d+\.\d+\.\d+\.\d+'
 vlanIDsPatt = r'\d{4}'
 coreIntPatt = r'\d+\/(?:\d+\/)*\d+'
-cutSheetPatt = "([a-zA-Z]+\d+\/(?:\d+\/)*\d+|Po\d*)(\s+.*)(connected|notconnect)\s+(\d{4}|trunk)\s+(auto|a-full)\s+(auto|a-100|a-1000)"
+cutSheetPatt = r'([a-zA-Z]+\d+\/(?:\d+\/)*\d+|Po\d*)(\s+.*)(connected|notconnect)\s+(\d{4}|trunk)\s+(auto|a-full)\s+(auto|a-100|a-1000)'
 
 def shCoreInfo(validIPs, username, netDevice):
     authLog.info(f"The following IP/hostname was received: {validIPs}")
