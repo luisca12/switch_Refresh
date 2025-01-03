@@ -31,7 +31,7 @@ dataVlanPatt = r'(vlan\s+)(\d+\s+)(name\s+[^\n]+[Dd][Aa][Tt][Aa])'
 ipPatt = r'\d+\.\d+\.\d+\.\d+'
 vlanIDsPatt = r'\d{4}'
 coreIntPatt = r'\d+\/(?:\d+\/)*\d+'
-cutSheetPatt = r'([a-zA-Z]+\d+\/(?:\d+\/)*\d+|Po\d*)(\s+.*)(connected|notconnect)\s+(\d{4}|trunk)\s+(auto|a-full)\s+(auto|a-100|a-1000)'
+cutSheetPatt = r'([a-zA-Z]+\d+\/(?:\d+\/)*\d+|Po\d*)(\s+.*)(connected|notconnect)\s+(\d{4}|trunk)\s+(auto|a-full|full)\s+(auto|a-100|a-1000)'
 
 def shCoreInfo(validIPs, username, netDevice):
     authLog.info(f"The following IP/hostname was received: {validIPs}")
@@ -501,7 +501,7 @@ def shCoreInfo(validIPs, username, netDevice):
 
                 authLog.info(f"Automation found the following old interfaces on device {validIPs}:\n{oldInt}")
                 authLog.info(f"Automation found the following old interfaces description on device {validIPs}:\n{oldIntDesc}")
-                authLog.info(f"Automation found the following VLANs\trunk of previous mentioned interfaces on device: {validIPs}")
+                authLog.info(f"Automation found the following VLANs\\trunk of previous mentioned interfaces on device: {validIPs}:{vlanIDList}")
 
                 for i, item in enumerate(vlanID):
                     if item == "trunk":
