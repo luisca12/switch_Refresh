@@ -1,6 +1,6 @@
 from netmiko import ConnectHandler
 from log import authLog
-from functions import genTxtFile, addToList, checkIsDigit
+from functions import genTxtFile, addToList, checkIsDigit, cutSheet
 from strings import hostnameTxt, ipDomainLookTxt, vtpDomainTxt, vlanTxt, hostPortTxt, trunkPortTxt, mgmtVlanTxt, defaultGateTxt, snmpLocationTxt, apIntConfigTxt, faIntConfigTxt, inputErrorString
 
 import traceback
@@ -37,6 +37,10 @@ def shCoreInfo(validIPs, username, netDevice):
     authLog.info(f"The following IP/hostname was received: {validIPs}")
     print(f"The following IP/hostname was received: {validIPs}")
     commandOutput = []
+    oldInt = []
+    oldIntDesc = []
+    vlanIDList = []
+    oldIntStat = []
 
     try: 
         while True:
@@ -483,13 +487,33 @@ def shCoreInfo(validIPs, username, netDevice):
                     
                     addToList(validIPs, commandOutput, faIntConfigTxt, faIntConfig)
 
-                stackAmount = 0
-
                 print(f"INFO: Taking a \"{shIntStatConn}\" for device: {validIPs}")
                 shIntStatConnOut = sshAccess.send_command(shIntStatConn)
                 authLog.info(f"Automation successfully ran the command:{shIntStatConn}\n{shHostnameOut}{shIntStatConn}\n{shIntStatConnOut}")
 
-                return commandOutput
+                shIntStatConnOut1 = re.findall(cutSheetPatt, shIntStatConnOut)
+                authLog.info(f"Automation successfully found the following old interfaces on device: { validIPs}\n{shIntStatConnOut1}")
+
+                for i, item in enumerate(shIntStatConnOut1, start=0):
+                    oldInt.append(item[0].strip())
+                    oldIntDesc.append(item[1].strip())
+                    vlanIDList.append(item[3].strip())
+
+                authLog.info(f"Automation found the following old interfaces on device {validIPs}:\n{oldInt}")
+                authLog.info(f"Automation found the following old interfaces description on device {validIPs}:\n{oldIntDesc}")
+                authLog.info(f"Automation found the following VLANs\trunk of previous mentioned interfaces on device: {validIPs}")
+
+                for i, item in enumerate(vlanID):
+                    if item == "trunk":
+                        item1 = "Trunk"
+                        oldIntStat.append(item1)
+                    else:
+                        item1 = "Auto/Auto"
+                        oldIntStat.append(item1)
+
+                authLog.info(f"Automation found the following interfaces settings of previous mentioned interfaces on deivce: {validIPs}")
+
+                return commandOutput, oldInt, oldIntDesc, vlanIDList, oldIntStat
             
             except Exception as error:
                 print(f"ERROR: An error occurred: {error}\n", traceback.format_exc())
